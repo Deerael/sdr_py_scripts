@@ -5,10 +5,11 @@
 # SPDX-License-Identifier: GPL-3.0
 #
 # GNU Radio Python Flow Graph
-# Title: Not titled yet
+# Title: tcp client wvfm demodulation in mono audio
 # GNU Radio version: 3.10.9.2
 
 from gnuradio import analog
+import math
 from gnuradio import audio
 from gnuradio import blocks
 from gnuradio import filter
@@ -26,10 +27,10 @@ import threading
 
 
 
-class wbfm_rx_mono_builtin(gr.top_block):
+class wbfm_mono(gr.top_block):
 
-    def __init__(self, centre_freq=int(100e6), ip_arg='localhost', port_arg=int(2e3), samp_rate=int(50e6), signal_freq=int(99.6e6)):
-        gr.top_block.__init__(self, "Not titled yet", catch_exceptions=True)
+    def __init__(self, centre_freq=int(100e6), ip_arg='localhost', port_arg=int(2e3), samp_rate=int(10e6), signal_freq=int(99.6e6)):
+        gr.top_block.__init__(self, "tcp client wvfm demodulation in mono audio ", catch_exceptions=True)
 
         self._lock = threading.RLock()
 
@@ -46,8 +47,9 @@ class wbfm_rx_mono_builtin(gr.top_block):
         # Variables
         ##################################################
         self.decim = decim = int(samp_rate / 1e6)
+        self.wbfm_deviation = wbfm_deviation = 75e3
         self.decim_2 = decim_2 = int((samp_rate / decim) / 0.25e6)
-        self.audio_samp_rate = audio_samp_rate = int(50e3)
+        self.audio_samp_rate = audio_samp_rate = int(48e3)
 
         ##################################################
         # Blocks
@@ -55,14 +57,24 @@ class wbfm_rx_mono_builtin(gr.top_block):
 
         self.zeromq_sub_source_0 = zeromq.sub_source(gr.sizeof_gr_complex, 1, f"tcp://{ip_arg}:{port_arg}", 100, False, (-1), '', False)
         self.zeromq_sub_source_0.set_max_output_buffer(2048)
+        self.rational_resampler_xxx_1 = filter.rational_resampler_fff(
+                interpolation=(int((audio_samp_rate / 1e3)/2)),
+                decimation=(int((samp_rate / decim / decim_2 / 1e3) /2)),
+                taps=[],
+                fractional_bw=0.4)
+        self.rational_resampler_xxx_0 = filter.rational_resampler_ccc(
+                interpolation=1,
+                decimation=decim,
+                taps=[],
+                fractional_bw=0.3)
         self.low_pass_filter_1 = filter.fir_filter_fff(
             1,
             firdes.low_pass(
                 1,
-                audio_samp_rate,
-                15e3,
-                500,
-                window.WIN_HAMMING,
+                (int(samp_rate / decim / decim_2)),
+                14e3,
+                1e3,
+                window.WIN_BLACKMAN,
                 6.76))
         self.low_pass_filter_0 = filter.fir_filter_ccf(
             decim_2,
@@ -70,29 +82,32 @@ class wbfm_rx_mono_builtin(gr.top_block):
                 1,
                 (int(samp_rate / decim)),
                 100e3,
-                20e3,
-                window.WIN_HAMMING,
+                15e3,
+                window.WIN_BLACKMAN,
                 6.76))
-        self.freq_xlating_fir_filter_xxx_0 = filter.freq_xlating_fir_filter_ccc(decim, firdes.low_pass(1,samp_rate, samp_rate/decim, 0.4e6), (int(signal_freq - centre_freq)), int(samp_rate))
-        self.blocks_multiply_const_vxx_0 = blocks.multiply_const_ff(0.75)
+        self.dc_blocker_xx_0 = filter.dc_blocker_ff(32, True)
+        self.blocks_multiply_xx_0 = blocks.multiply_vcc(1)
+        self.blocks_multiply_const_vxx_0 = blocks.multiply_const_ff(0.2)
         self.audio_sink_0 = audio.sink(audio_samp_rate, '', True)
-        self.analog_wfm_rcv_0 = analog.wfm_rcv(
-        	quad_rate=0.25e6,
-        	audio_decimation=5,
-        )
-        self.analog_agc_xx_0 = analog.agc_cc((1e-4), 1.0, 1.0, 65536)
+        self.analog_sig_source_x_0 = analog.sig_source_c(samp_rate, analog.GR_SIN_WAVE, (centre_freq - signal_freq), 1, 0, 0)
+        self.analog_quadrature_demod_cf_0 = analog.quadrature_demod_cf((0.25e6/(2*math.pi* wbfm_deviation)))
+        self.analog_fm_deemph_0 = analog.fm_deemph(fs=audio_samp_rate, tau=(50e-6))
 
 
         ##################################################
         # Connections
         ##################################################
-        self.connect((self.analog_agc_xx_0, 0), (self.freq_xlating_fir_filter_xxx_0, 0))
-        self.connect((self.analog_wfm_rcv_0, 0), (self.low_pass_filter_1, 0))
+        self.connect((self.analog_fm_deemph_0, 0), (self.blocks_multiply_const_vxx_0, 0))
+        self.connect((self.analog_quadrature_demod_cf_0, 0), (self.low_pass_filter_1, 0))
+        self.connect((self.analog_sig_source_x_0, 0), (self.blocks_multiply_xx_0, 1))
         self.connect((self.blocks_multiply_const_vxx_0, 0), (self.audio_sink_0, 0))
-        self.connect((self.freq_xlating_fir_filter_xxx_0, 0), (self.low_pass_filter_0, 0))
-        self.connect((self.low_pass_filter_0, 0), (self.analog_wfm_rcv_0, 0))
-        self.connect((self.low_pass_filter_1, 0), (self.blocks_multiply_const_vxx_0, 0))
-        self.connect((self.zeromq_sub_source_0, 0), (self.analog_agc_xx_0, 0))
+        self.connect((self.blocks_multiply_xx_0, 0), (self.rational_resampler_xxx_0, 0))
+        self.connect((self.dc_blocker_xx_0, 0), (self.analog_fm_deemph_0, 0))
+        self.connect((self.low_pass_filter_0, 0), (self.analog_quadrature_demod_cf_0, 0))
+        self.connect((self.low_pass_filter_1, 0), (self.rational_resampler_xxx_1, 0))
+        self.connect((self.rational_resampler_xxx_0, 0), (self.low_pass_filter_0, 0))
+        self.connect((self.rational_resampler_xxx_1, 0), (self.dc_blocker_xx_0, 0))
+        self.connect((self.zeromq_sub_source_0, 0), (self.blocks_multiply_xx_0, 0))
 
 
     def get_centre_freq(self):
@@ -101,7 +116,7 @@ class wbfm_rx_mono_builtin(gr.top_block):
     def set_centre_freq(self, centre_freq):
         with self._lock:
             self.centre_freq = centre_freq
-            self.freq_xlating_fir_filter_xxx_0.set_center_freq((int(self.signal_freq - self.centre_freq)))
+            self.analog_sig_source_x_0.set_frequency((self.centre_freq - self.signal_freq))
 
     def get_ip_arg(self):
         return self.ip_arg
@@ -125,8 +140,9 @@ class wbfm_rx_mono_builtin(gr.top_block):
             self.samp_rate = samp_rate
             self.set_decim(int(self.samp_rate / 1e6))
             self.set_decim_2(int((self.samp_rate / self.decim) / 0.25e6))
-            self.freq_xlating_fir_filter_xxx_0.set_taps(firdes.low_pass(1,self.samp_rate, self.samp_rate/self.decim, 0.4e6))
-            self.low_pass_filter_0.set_taps(firdes.low_pass(1, (int(self.samp_rate / self.decim)), 100e3, 20e3, window.WIN_HAMMING, 6.76))
+            self.analog_sig_source_x_0.set_sampling_freq(self.samp_rate)
+            self.low_pass_filter_0.set_taps(firdes.low_pass(1, (int(self.samp_rate / self.decim)), 100e3, 15e3, window.WIN_BLACKMAN, 6.76))
+            self.low_pass_filter_1.set_taps(firdes.low_pass(1, (int(self.samp_rate / self.decim / self.decim_2)), 14e3, 1e3, window.WIN_BLACKMAN, 6.76))
 
     def get_signal_freq(self):
         return self.signal_freq
@@ -134,7 +150,7 @@ class wbfm_rx_mono_builtin(gr.top_block):
     def set_signal_freq(self, signal_freq):
         with self._lock:
             self.signal_freq = signal_freq
-            self.freq_xlating_fir_filter_xxx_0.set_center_freq((int(self.signal_freq - self.centre_freq)))
+            self.analog_sig_source_x_0.set_frequency((self.centre_freq - self.signal_freq))
 
     def get_decim(self):
         return self.decim
@@ -143,8 +159,16 @@ class wbfm_rx_mono_builtin(gr.top_block):
         with self._lock:
             self.decim = decim
             self.set_decim_2(int((self.samp_rate / self.decim) / 0.25e6))
-            self.freq_xlating_fir_filter_xxx_0.set_taps(firdes.low_pass(1,self.samp_rate, self.samp_rate/self.decim, 0.4e6))
-            self.low_pass_filter_0.set_taps(firdes.low_pass(1, (int(self.samp_rate / self.decim)), 100e3, 20e3, window.WIN_HAMMING, 6.76))
+            self.low_pass_filter_0.set_taps(firdes.low_pass(1, (int(self.samp_rate / self.decim)), 100e3, 15e3, window.WIN_BLACKMAN, 6.76))
+            self.low_pass_filter_1.set_taps(firdes.low_pass(1, (int(self.samp_rate / self.decim / self.decim_2)), 14e3, 1e3, window.WIN_BLACKMAN, 6.76))
+
+    def get_wbfm_deviation(self):
+        return self.wbfm_deviation
+
+    def set_wbfm_deviation(self, wbfm_deviation):
+        with self._lock:
+            self.wbfm_deviation = wbfm_deviation
+            self.analog_quadrature_demod_cf_0.set_gain((0.25e6/(2*math.pi* self.wbfm_deviation)))
 
     def get_decim_2(self):
         return self.decim_2
@@ -152,6 +176,7 @@ class wbfm_rx_mono_builtin(gr.top_block):
     def set_decim_2(self, decim_2):
         with self._lock:
             self.decim_2 = decim_2
+            self.low_pass_filter_1.set_taps(firdes.low_pass(1, (int(self.samp_rate / self.decim / self.decim_2)), 14e3, 1e3, window.WIN_BLACKMAN, 6.76))
 
     def get_audio_samp_rate(self):
         return self.audio_samp_rate
@@ -159,7 +184,6 @@ class wbfm_rx_mono_builtin(gr.top_block):
     def set_audio_samp_rate(self, audio_samp_rate):
         with self._lock:
             self.audio_samp_rate = audio_samp_rate
-            self.low_pass_filter_1.set_taps(firdes.low_pass(1, self.audio_samp_rate, 15e3, 500, window.WIN_HAMMING, 6.76))
 
 
 
@@ -175,7 +199,7 @@ def argument_parser():
         "-p", "--port-arg", dest="port_arg", type=intx, default=int(2e3),
         help="Set port [default=%(default)r]")
     parser.add_argument(
-        "-s", "--samp-rate", dest="samp_rate", type=eng_float, default=eng_notation.num_to_str(float(int(50e6))),
+        "-s", "--samp-rate", dest="samp_rate", type=eng_float, default=eng_notation.num_to_str(float(int(10e6))),
         help="Set sample rate [default=%(default)r]")
     parser.add_argument(
         "-f", "--signal-freq", dest="signal_freq", type=eng_float, default=eng_notation.num_to_str(float(int(99.6e6))),
@@ -183,7 +207,7 @@ def argument_parser():
     return parser
 
 
-def main(top_block_cls=wbfm_rx_mono_builtin, options=None):
+def main(top_block_cls=wbfm_mono, options=None):
     if options is None:
         options = argument_parser().parse_args()
     tb = top_block_cls(centre_freq=options.centre_freq, ip_arg=options.ip_arg, port_arg=options.port_arg, samp_rate=options.samp_rate, signal_freq=options.signal_freq)
