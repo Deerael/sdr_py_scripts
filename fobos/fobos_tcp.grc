@@ -1,0 +1,188 @@
+options:
+  parameters:
+    author: ''
+    catch_exceptions: 'True'
+    category: '[GRC Hier Blocks]'
+    cmake_opt: ''
+    comment: ''
+    copyright: ''
+    description: ''
+    gen_cmake: 'On'
+    gen_linking: dynamic
+    generate_options: no_gui
+    hier_block_src_path: '.:'
+    id: fobos_tcp
+    max_nouts: '0'
+    output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: ''
+    run: 'True'
+    run_command: '{python} -u {filename}'
+    run_options: prompt
+    sizing_mode: fixed
+    thread_safe_setters: ''
+    title: Not titled yet
+    window_size: (1000,1000)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 8]
+    rotation: 0
+    state: enabled
+
+blocks:
+- name: RigExpert_fobos_sdr_0
+  id: RigExpert_fobos_sdr
+  parameters:
+    affinity: ''
+    alias: ''
+    clock_source: '0'
+    comment: ''
+    direct_sampling: '0'
+    frequency: center_freq_arg
+    index: '0'
+    lna_gain: lna_arg
+    maxoutbuf: '2048'
+    minoutbuf: '0'
+    samplerate: sample_rate_arg
+    vga_gain: vga_arg
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [176, 372.0]
+    rotation: 0
+    state: enabled
+- name: center_freq_arg
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: none
+    label: center_freq
+    short_id: f
+    type: eng_float
+    value: 100e6
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [168, 8.0]
+    rotation: 0
+    state: enabled
+- name: ip_arg
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: none
+    label: ip
+    short_id: i
+    type: str
+    value: localhost
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [480, 8.0]
+    rotation: 0
+    state: enabled
+- name: lna_arg
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: none
+    label: lna
+    short_id: l
+    type: intx
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [584, 8.0]
+    rotation: 0
+    state: enabled
+- name: port_arg
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: none
+    label: port
+    short_id: p
+    type: intx
+    value: '2000'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [400, 8.0]
+    rotation: 0
+    state: enabled
+- name: sample_rate_arg
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: none
+    label: sample_rate
+    short_id: s
+    type: eng_float
+    value: 25e6
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [280, 8.0]
+    rotation: 0
+    state: enabled
+- name: vga_arg
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: none
+    label: vga
+    short_id: v
+    type: intx
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [664, 8.0]
+    rotation: 0
+    state: enabled
+- name: zeromq_pub_sink_0
+  id: zeromq_pub_sink
+  parameters:
+    address: f"tcp://{ip_arg}:{port_arg}"
+    affinity: ''
+    alias: ''
+    bind: 'True'
+    comment: ''
+    drop_on_hwm: 'True'
+    hwm: '-1'
+    key: ''
+    pass_tags: 'False'
+    timeout: '100'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [560, 392.0]
+    rotation: 0
+    state: enabled
+
+connections:
+- [RigExpert_fobos_sdr_0, '0', zeromq_pub_sink_0, '0']
+
+metadata:
+  file_format: 1
+  grc_version: 3.10.9.2
