@@ -8,8 +8,6 @@
 # Title: Not titled yet
 # GNU Radio version: 3.10.9.2
 
-from PyQt5 import Qt
-from gnuradio import qtgui
 from gnuradio import analog
 import math
 from gnuradio import audio
@@ -20,47 +18,19 @@ from gnuradio import gr
 from gnuradio.fft import window
 import sys
 import signal
-from PyQt5 import Qt
 from argparse import ArgumentParser
 from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
 from gnuradio import zeromq
-import sip
 import threading
 
 
 
-class wbfm_rx_mono_ll(gr.top_block, Qt.QWidget):
+
+class wbfm_rx_mono_ll(gr.top_block):
 
     def __init__(self, centre_freq=int(100e6), ip_arg='localhost', port_arg=int(2e3), samp_rate=int(10e6), signal_freq=int(103.5e6)):
         gr.top_block.__init__(self, "Not titled yet", catch_exceptions=True)
-        Qt.QWidget.__init__(self)
-        self.setWindowTitle("Not titled yet")
-        qtgui.util.check_set_qss()
-        try:
-            self.setWindowIcon(Qt.QIcon.fromTheme('gnuradio-grc'))
-        except BaseException as exc:
-            print(f"Qt GUI: Could not set Icon: {str(exc)}", file=sys.stderr)
-        self.top_scroll_layout = Qt.QVBoxLayout()
-        self.setLayout(self.top_scroll_layout)
-        self.top_scroll = Qt.QScrollArea()
-        self.top_scroll.setFrameStyle(Qt.QFrame.NoFrame)
-        self.top_scroll_layout.addWidget(self.top_scroll)
-        self.top_scroll.setWidgetResizable(True)
-        self.top_widget = Qt.QWidget()
-        self.top_scroll.setWidget(self.top_widget)
-        self.top_layout = Qt.QVBoxLayout(self.top_widget)
-        self.top_grid_layout = Qt.QGridLayout()
-        self.top_layout.addLayout(self.top_grid_layout)
-
-        self.settings = Qt.QSettings("GNU Radio", "wbfm_rx_mono_ll")
-
-        try:
-            geometry = self.settings.value("geometry")
-            if geometry:
-                self.restoreGeometry(geometry)
-        except BaseException as exc:
-            print(f"Qt GUI: Could not restore geometry: {str(exc)}", file=sys.stderr)
 
         self._lock = threading.RLock()
 
@@ -93,49 +63,6 @@ class wbfm_rx_mono_ll(gr.top_block, Qt.QWidget):
                 decimation=decim,
                 taps=[],
                 fractional_bw=0)
-        self.qtgui_freq_sink_x_3 = qtgui.freq_sink_f(
-            1024, #size
-            window.WIN_HAMMING, #wintype
-            0, #fc
-            0.25e6, #bw
-            "deemph", #name
-            1,
-            None # parent
-        )
-        self.qtgui_freq_sink_x_3.set_update_time(0.10)
-        self.qtgui_freq_sink_x_3.set_y_axis(0, 150)
-        self.qtgui_freq_sink_x_3.set_y_label('Relative Gain', 'dB')
-        self.qtgui_freq_sink_x_3.set_trigger_mode(qtgui.TRIG_MODE_FREE, 0.0, 0, "")
-        self.qtgui_freq_sink_x_3.enable_autoscale(True)
-        self.qtgui_freq_sink_x_3.enable_grid(True)
-        self.qtgui_freq_sink_x_3.set_fft_average(0.2)
-        self.qtgui_freq_sink_x_3.enable_axis_labels(True)
-        self.qtgui_freq_sink_x_3.enable_control_panel(False)
-        self.qtgui_freq_sink_x_3.set_fft_window_normalized(False)
-
-
-        self.qtgui_freq_sink_x_3.set_plot_pos_half(not False)
-
-        labels = ['', '', '', '', '',
-            '', '', '', '', '']
-        widths = [1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1]
-        colors = ["blue", "red", "green", "black", "cyan",
-            "magenta", "yellow", "dark red", "dark green", "dark blue"]
-        alphas = [1.0, 1.0, 1.0, 1.0, 1.0,
-            1.0, 1.0, 1.0, 1.0, 1.0]
-
-        for i in range(1):
-            if len(labels[i]) == 0:
-                self.qtgui_freq_sink_x_3.set_line_label(i, "Data {0}".format(i))
-            else:
-                self.qtgui_freq_sink_x_3.set_line_label(i, labels[i])
-            self.qtgui_freq_sink_x_3.set_line_width(i, widths[i])
-            self.qtgui_freq_sink_x_3.set_line_color(i, colors[i])
-            self.qtgui_freq_sink_x_3.set_line_alpha(i, alphas[i])
-
-        self._qtgui_freq_sink_x_3_win = sip.wrapinstance(self.qtgui_freq_sink_x_3.qwidget(), Qt.QWidget)
-        self.top_layout.addWidget(self._qtgui_freq_sink_x_3_win)
         self.low_pass_filter_1 = filter.fir_filter_fff(
             audio_decim,
             firdes.low_pass(
@@ -168,7 +95,6 @@ class wbfm_rx_mono_ll(gr.top_block, Qt.QWidget):
         ##################################################
         self.connect((self.analog_agc_xx_0, 0), (self.analog_quadrature_demod_cf_0, 0))
         self.connect((self.analog_fm_deemph_0, 0), (self.low_pass_filter_1, 0))
-        self.connect((self.analog_fm_deemph_0, 0), (self.qtgui_freq_sink_x_3, 0))
         self.connect((self.analog_quadrature_demod_cf_0, 0), (self.analog_fm_deemph_0, 0))
         self.connect((self.analog_sig_source_x_0, 0), (self.blocks_multiply_xx_0, 1))
         self.connect((self.blocks_multiply_const_vxx_0, 0), (self.audio_sink_0, 0))
@@ -178,14 +104,6 @@ class wbfm_rx_mono_ll(gr.top_block, Qt.QWidget):
         self.connect((self.rational_resampler_xxx_0, 0), (self.low_pass_filter_0, 0))
         self.connect((self.zeromq_sub_source_0, 0), (self.blocks_multiply_xx_0, 0))
 
-
-    def closeEvent(self, event):
-        self.settings = Qt.QSettings("GNU Radio", "wbfm_rx_mono_ll")
-        self.settings.setValue("geometry", self.saveGeometry())
-        self.stop()
-        self.wait()
-
-        event.accept()
 
     def get_centre_freq(self):
         return self.centre_freq
@@ -299,29 +217,26 @@ def argument_parser():
 def main(top_block_cls=wbfm_rx_mono_ll, options=None):
     if options is None:
         options = argument_parser().parse_args()
-
-    qapp = Qt.QApplication(sys.argv)
-
     tb = top_block_cls(centre_freq=options.centre_freq, ip_arg=options.ip_arg, port_arg=options.port_arg, samp_rate=options.samp_rate, signal_freq=options.signal_freq)
-
-    tb.start()
-
-    tb.show()
 
     def sig_handler(sig=None, frame=None):
         tb.stop()
         tb.wait()
 
-        Qt.QApplication.quit()
+        sys.exit(0)
 
     signal.signal(signal.SIGINT, sig_handler)
     signal.signal(signal.SIGTERM, sig_handler)
 
-    timer = Qt.QTimer()
-    timer.start(500)
-    timer.timeout.connect(lambda: None)
+    tb.start()
 
-    qapp.exec_()
+    try:
+        input('Press Enter to quit: ')
+    except EOFError:
+        pass
+    tb.stop()
+    tb.wait()
+
 
 if __name__ == '__main__':
     main()
