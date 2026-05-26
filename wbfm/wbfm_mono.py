@@ -6,7 +6,7 @@
 #
 # GNU Radio Python Flow Graph
 # Title: tcp client wvfm demodulation in mono audio
-# GNU Radio version: 3.10.9.2
+# GNU Radio version: v3.11.0.0git-1096-gc61887f7
 
 from gnuradio import analog
 import math
@@ -14,15 +14,16 @@ from gnuradio import audio
 from gnuradio import blocks
 from gnuradio import filter
 from gnuradio.filter import firdes
+from gnuradio import zeromq
+import threading
 from gnuradio import gr
+from gnuradio.filter import firdes
 from gnuradio.fft import window
 import sys
 import signal
 from argparse import ArgumentParser
 from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
-from gnuradio import zeromq
-import threading
 
 
 
@@ -87,7 +88,7 @@ class wbfm_mono(gr.top_block):
                 6.76))
         self.dc_blocker_xx_0 = filter.dc_blocker_ff(32, True)
         self.blocks_multiply_xx_0 = blocks.multiply_vcc(1)
-        self.blocks_multiply_const_vxx_0 = blocks.multiply_const_ff(0.2)
+        self.blocks_multiply_const_vxx_0 = blocks.multiply_const_ff(0.2, 1)
         self.audio_sink_0 = audio.sink(audio_samp_rate, '', True)
         self.analog_sig_source_x_0 = analog.sig_source_c(samp_rate, analog.GR_SIN_WAVE, (centre_freq - signal_freq), 1, 0, 0)
         self.analog_quadrature_demod_cf_0 = analog.quadrature_demod_cf((0.25e6/(2*math.pi* wbfm_deviation)))
